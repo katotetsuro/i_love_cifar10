@@ -10,4 +10,4 @@ https://qiita.com/yu4u/items/70aa007346ec73b7ff05
 - 同時に使う（mixupしてからrandom erasingするｗっｗ） result_3
 - ShakeDropをしてみる
 https://qiita.com/yu4u/items/a9fc529c85534eca11e5
-- ShakeDropにmixupしてみる？
+- ShakeDropにmixupしてみる？ result_5
