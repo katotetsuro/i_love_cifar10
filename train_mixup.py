@@ -31,6 +31,7 @@ def soft_label_classification_loss(x, t):
         y2 = y2.astype(xp.int32).reshape((-1, ))
         loss = F.matmul(w, F.softmax_cross_entropy(x, y1, reduce='no')) + \
             F.matmul((1-w), F.softmax_cross_entropy(x, y2, reduce='no'))
+        loss /= len(x)
         return loss
     else:
         return F.softmax_cross_entropy(x, t)
