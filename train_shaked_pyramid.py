@@ -11,6 +11,9 @@ from chainer.training import extensions
 from chainer.datasets import get_cifar10
 from chainer.datasets import get_cifar100
 
+from chainerui.utils import save_args
+from chainerui.extensions import CommandsExtension
+
 import transformer
 import dataset
 import numpy as np
@@ -46,11 +49,12 @@ def soft_label_classification_acc(x, t):
 
 def main():
     parser = argparse.ArgumentParser(description='Chainer CIFAR example:')
+    parser.add_argument('--seed', '-s', type=int, default=0, help='seed for random values')
     parser.add_argument('--dataset', '-d', default='cifar10',
                         help='The dataset to use: cifar10 or cifar100')
     parser.add_argument('--batchsize', '-b', type=int, default=64,
                         help='Number of images in each mini-batch')
-    parser.add_argument('--learnrate', '-l', type=float, default=0.05,
+    parser.add_argument('--learnrate', '-l', type=float, default=0.1,
                         help='Learning rate for SGD')
     parser.add_argument('--epoch', '-e', type=int, default=300,
                         help='Number of sweeps over the dataset to train')
@@ -60,6 +64,8 @@ def main():
                         help='Directory to output the result')
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
+    parser.add_argument('--aug_method', '-a', default='both', choices=['none', 'mixup', 'random_erasing', 'both']
+                        help='data augmentation strategy')
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -95,8 +101,16 @@ def main():
 
     # augment train data
     train = dataset.PairwiseCifar10((train, None))
-    train = chainer.datasets.transform_dataset.TransformDataset(
-        train, transformer.MixupTransform())
+    if args.aug_method == 'none':
+        train = dataset.SingleCifar10(train)
+    elif args.aug_method in ('both', 'mixup'):
+        use_random_erasing = args.aug_method == 'both'
+        train = chainer.datasets.transform_dataset.TransformDataset(
+            train, transformer.MixupTransform(use_random_erasing=use_random_erasing))
+    elif args.aug_method == 'random_erasing':
+        train = chainer.datasets.transform_dataset.TransformDataset(
+            train, transformer.RandomErasingTransform())
+            
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
                                                  repeat=False, shuffle=False)
@@ -110,8 +124,16 @@ def main():
                                         device=args.gpu), trigger=eval_trigger)
 
     # Reduce the learning rate by half every 25 epochs.
-    trainer.extend(extensions.ExponentialShift('lr', 0.5),
-                   trigger=(25, 'epoch'))
+    lr_drop_epoch = [int(args.epoch*0.5), int(args.epoch*0.75)]
+    lr_drop_ratio = 0.1
+    print(f'lr schedule: {lr_drop_ratio}, timing: {lr_drop_epoch}')
+
+    def lr_drop(trainer):
+        trainer.updater.get_optimizer('main').lr *= lr_drop_ratio
+    trainer.extend(
+        lr_drop,
+        trigger=chainer.training.triggers.ManualScheduleTrigger(lr_drop_epoch, 'epoch'))
+    trainer.extend(extensions.observe_lr(), trigger=(1, 'epoch'))
 
     # Dump a computational graph from 'loss' variable at the first iteration
     # The "main" refers to the target link of the "main" optimizer.
@@ -129,11 +151,15 @@ def main():
     # Entries other than 'epoch' are reported by the Classifier link, called by
     # either the updater or the evaluator.
     trainer.extend(extensions.PrintReport(
-        ['epoch', 'main/loss', 'validation/main/loss',
+        ['epoch', 'lr', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
 
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())
+    # interact with chainerui
+    trainer.extend(CommandsExtension(), trigger=(100, 'iteration'))
+    # save args
+    save_args(args, args.out)
 
     if args.resume:
         # Resume from a snapshot

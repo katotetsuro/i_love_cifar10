@@ -12,6 +12,7 @@ from chainer import link
 from chainer.utils import array
 from chainer.utils import type_check
 
+
 class ShakeNoiseMultiplier(function.Function):
 
     """forwardとbackwardで異なる乱数が乗算される"""
@@ -57,13 +58,14 @@ class ShakeNoiseMultiplier(function.Function):
 def shake_noise_multiplier(x, forward_range, backward_range):
     return ShakeNoiseMultiplier(forward_range, backward_range)(x)
 
+
 class BatchConv2D(chainer.Chain):
     def __init__(self, ch_in, ch_out, ksize, stride=1, pad=0, activation=F.relu):
         super(BatchConv2D, self).__init__(
             conv=L.Convolution2D(ch_in, ch_out, ksize, stride, pad),
             bn=L.BatchNormalization(ch_out),
         )
-        self.activation=activation
+        self.activation = activation
 
     def __call__(self, x):
         h = self.bn(self.conv(x))
@@ -73,11 +75,14 @@ class BatchConv2D(chainer.Chain):
 
 
 class PyramidBlock(chainer.Chain):
-    def __init__(self, ch_in, ch_out, stride=1, activation=F.relu, skip_ratio=0, alpha=(-1,1), beta=(0,1)):
-        initializer = initializers.Normal(scale=math.sqrt(2.0 / (ch_out * 3 * 3)))
+    def __init__(self, ch_in, ch_out, stride=1, activation=F.relu, skip_ratio=0, alpha=(-1, 1), beta=(0, 1)):
+        initializer = initializers.Normal(
+            scale=math.sqrt(2.0 / (ch_out * 3 * 3)))
         super(PyramidBlock, self).__init__(
-            conv1=L.Convolution2D(ch_in, ch_out, 3, stride, 1, initialW=initializer),
-            conv2=L.Convolution2D(ch_out, ch_out, 3, 1, 1, initialW=initializer),
+            conv1=L.Convolution2D(ch_in, ch_out, 3, stride,
+                                  1, initialW=initializer),
+            conv2=L.Convolution2D(ch_out, ch_out, 3, 1,
+                                  1, initialW=initializer),
             bn1=L.BatchNormalization(ch_in),
             bn2=L.BatchNormalization(ch_out),
             bn3=L.BatchNormalization(ch_out),
@@ -112,8 +117,6 @@ class PyramidBlock(chainer.Chain):
             p = chainer.Variable(p)
             x = F.concat((x, p), axis=1)
 
-
-
         h = self.bn1(h)
         h = self.conv1(h)
         h = self.bn2(h)
@@ -147,15 +150,18 @@ class PyramidNet(chainer.Chain):
             skip_size = depth * 3 - 3
             for i in six.moves.range(depth):
                 if skip:
-                    skip_ratio = float(i) / depth * 0.5 # float(i) / skip_size * 0.5
+                    # float(i) / skip_size * 0.5
+                    skip_ratio = float(i) / depth * 0.5
                 else:
                     skip_ratio = 0
                 in_channel = channel
                 channel += channel_diff
-                links.append(('py{}'.format(len(links)), PyramidBlock(int(round(in_channel)), int(round(channel)),  skip_ratio=skip_ratio)))
+                links.append(('py{}'.format(len(links)), PyramidBlock(
+                    int(round(in_channel)), int(round(channel)),  skip_ratio=skip_ratio)))
             in_channel = channel
             channel += channel_diff
-            links.append(('py{}'.format(len(links)), PyramidBlock(int(round(in_channel)), int(round(channel)), stride=2)))
+            links.append(('py{}'.format(len(links)), PyramidBlock(
+                int(round(in_channel)), int(round(channel)), stride=2)))
             for i in six.moves.range(depth - 1):
                 if skip:
                     skip_ratio = float(i + depth) / skip_size * 0.5
@@ -163,10 +169,12 @@ class PyramidNet(chainer.Chain):
                     skip_ratio = 0
                 in_channel = channel
                 channel += channel_diff
-                links.append(('py{}'.format(len(links)), PyramidBlock(int(round(in_channel)), int(round(channel)),  skip_ratio=skip_ratio)))
+                links.append(('py{}'.format(len(links)), PyramidBlock(
+                    int(round(in_channel)), int(round(channel)),  skip_ratio=skip_ratio)))
             in_channel = channel
             channel += channel_diff
-            links.append(('py{}'.format(len(links)), PyramidBlock(int(round(in_channel)), int(round(channel)), stride=2)))
+            links.append(('py{}'.format(len(links)), PyramidBlock(
+                int(round(in_channel)), int(round(channel)), stride=2)))
             for i in six.moves.range(depth - 1):
                 if skip:
                     skip_ratio = float(i + depth * 2 - 1) / skip_size * 0.5
@@ -174,11 +182,15 @@ class PyramidNet(chainer.Chain):
                     skip_ratio = 0
                 in_channel = channel
                 channel += channel_diff
-                links.append(('py{}'.format(len(links)), PyramidBlock(int(round(in_channel)), int(round(channel)),  skip_ratio=skip_ratio)))
-            links.append(('bn{}'.format(len(links)), L.BatchNormalization(int(round(channel)))))
+                links.append(('py{}'.format(len(links)), PyramidBlock(
+                    int(round(in_channel)), int(round(channel)),  skip_ratio=skip_ratio)))
+            links.append(('bn{}'.format(len(links)),
+                          L.BatchNormalization(int(round(channel)))))
             links.append(('_relu{}'.format(len(links)), F.relu))
-            links.append(('_apool{}'.format(len(links)), lambda x: F.average_pooling_2d(x, ksize=8, stride=1, pad=0)))
-            links.append(('fc{}'.format(len(links)), L.Linear(int(round(channel)), 10)))
+            links.append(('_apool{}'.format(len(links)), lambda x: F.average_pooling_2d(
+                x, ksize=8, stride=1, pad=0)))
+            links.append(('fc{}'.format(len(links)),
+                          L.Linear(int(round(channel)), 10)))
 
             for name, f in links:
                 if not name.startswith('_'):
