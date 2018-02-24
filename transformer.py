@@ -53,6 +53,8 @@ def mixup(x, manual_blend=None):
 
 
 class RandomErasingTransform(object):
+    def __init__(self):
+        print('RandomErasingあり')
 
     def __call__(self, in_data):
         x, y = in_data
@@ -63,6 +65,7 @@ class RandomErasingTransform(object):
 
 class MixupTransform(object):
     def __init__(self, manual_blend=None, use_random_erasing=True):
+        print('Mixupあり、RandomErasing{}'.format('あり' if use_random_erasing else 'なし'))
         self.manual_blend = manual_blend
         self.use_random_erasing = use_random_erasing
 
