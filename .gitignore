@@ -5,3 +5,4 @@ __pycache__
 .DS_Store
 result
 xxx_loader.py
+train_xxx.py

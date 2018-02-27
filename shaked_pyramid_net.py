@@ -140,7 +140,7 @@ class PyramidBlock(chainer.Chain):
 
 
 class PyramidNet(chainer.Chain):
-    def __init__(self, depth=18, alpha=16, start_channel=16, skip=False):
+    def __init__(self, depth=18, alpha=16, start_channel=16, skip=False, num_class=10):
         super(PyramidNet, self).__init__()
 
         with self.init_scope():
@@ -190,7 +190,7 @@ class PyramidNet(chainer.Chain):
             links.append(('_apool{}'.format(len(links)), lambda x: F.average_pooling_2d(
                 x, ksize=8, stride=1, pad=0)))
             links.append(('fc{}'.format(len(links)),
-                          L.Linear(int(round(channel)), 10)))
+                          L.Linear(in_size=None, out_size=num_class)))
 
             for name, f in links:
                 if not name.startswith('_'):
