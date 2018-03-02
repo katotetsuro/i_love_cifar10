@@ -187,8 +187,9 @@ class PyramidNet(chainer.Chain):
             links.append(('bn{}'.format(len(links)),
                           L.BatchNormalization(int(round(channel)))))
             links.append(('_relu{}'.format(len(links)), F.relu))
+            # attempt to global average pooling
             links.append(('_apool{}'.format(len(links)), lambda x: F.average_pooling_2d(
-                x, ksize=8, stride=1, pad=0)))
+                x, ksize=x.shape[2], stride=1, pad=0)))
             links.append(('fc{}'.format(len(links)),
                           L.Linear(in_size=None, out_size=num_class)))
 

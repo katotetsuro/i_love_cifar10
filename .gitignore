@@ -6,3 +6,5 @@ __pycache__
 result
 xxx_loader.py
 train_xxx.py
+*.npz
+snapshot_iter*
