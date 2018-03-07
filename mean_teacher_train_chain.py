@@ -27,11 +27,8 @@ class MeanTeacherTrainChain(chainer.Link):
         class_loss = F.softmax_cross_entropy(ys, t)
         yt = F.softmax(yt).array
         ys = F.softmax(ys)
-        print(yt, ys)
         consistency_loss = F.mean_squared_error(yt, ys)
         total_loss = class_loss + consistency_loss
-
-        print(class_loss, consistency_loss, total_loss)
 
         reporter.report({
             'class_loss': class_loss,
@@ -43,8 +40,9 @@ class MeanTeacherTrainChain(chainer.Link):
 
     # trainerの毎ループ呼ばれるExtensionとして使う
     def on_update_finished(self, trainer):
-        print('updating teacher model...')
         alpha = min(1 - 1 / (trainer.updater.iteration + 1), 0.97)
-        for t, s in zip(self.teacher.params(), self.student.params()):
-            print(t.name, s.name)
-            t = t * alpha + s * (1-alpha)
+        # https://github.com/chainer/chainer/blob/v3.4.0/chainer/link.py#L450
+        t = self.teacher.__dict__
+        s = self.student.__dict__
+        for name in self.teacher._params:
+            t[name] = t[name] * alpha + s[name] * (1-alpha)
