@@ -26,7 +26,7 @@ import mean_teacher_train_chain
 
 class ResNet(chainer.links.ResNet50Layers):
     def __call__(self, x):
-        return super().__call__(x)['fc6']
+        return super().__call__(x, layers=['fc6'])['fc6']
 
 
 def set_random_seed(seed):
@@ -92,7 +92,7 @@ def main():
         raise RuntimeError('Invalid dataset choice.')
 
     if args.model == 'resnet50':
-        predictor = ResNet('None')
+        predictor = ResNet('auto')
         predictor.fc6 = L.Linear(2048, class_labels)
     elif args.model == 'pyramid':
         predictor = shaked_pyramid_net.PyramidNet(skip=True)

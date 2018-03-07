@@ -52,7 +52,7 @@ def soft_label_classification_acc(x, t):
 
 class ResNet(chainer.links.ResNet50Layers):
     def __call__(self, x):
-        return super().__call__(x)['prob']
+        return super().__call__(x, layers=['fc6'])['fc6']
 
 
 def set_random_seed(seed):

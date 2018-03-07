@@ -45,5 +45,6 @@ class MeanTeacherTrainChain(chainer.Link):
     def on_update_finished(self, trainer):
         print('updating teacher model...')
         alpha = min(1 - 1 / (trainer.updater.iteration + 1), 0.97)
-        for t, s in zip(self.teacher.parameters(), self.student.parameters()):
+        for t, s in zip(self.teacher.params(), self.student.params()):
+            print(t.name, s.name)
             t = t * alpha + s * (1-alpha)
