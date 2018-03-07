@@ -138,9 +138,15 @@ class PyramidBlock(chainer.Chain):
         else:
             return h + x
 
+def _global_average_pooling_2d(x):
+    n, channel, rows, cols = x.data.shape
+    h = F.average_pooling_2d(x, (rows, cols), stride=1)
+    h = F.reshape(h, (n, channel))
+    return h
+
 
 class PyramidNet(chainer.Chain):
-    def __init__(self, depth=18, alpha=16, start_channel=16, skip=False, num_class=10):
+    def __init__(self, depth=18, alpha=16, start_channel=16, skip=False, num_class=10, pooling=F.max_pooling_2d):
         super(PyramidNet, self).__init__()
 
         with self.init_scope():
@@ -162,6 +168,9 @@ class PyramidNet(chainer.Chain):
             channel += channel_diff
             links.append(('py{}'.format(len(links)), PyramidBlock(
                 int(round(in_channel)), int(round(channel)), stride=2)))
+            if pooling is not None:
+                links.append(('_pooling{}'.format(len(links)), lambda x: F.max_pooling_2d(
+                    x, ksize=(2, 2), stride=2, pad=0)))
             for i in six.moves.range(depth - 1):
                 if skip:
                     skip_ratio = float(i + depth) / skip_size * 0.5
@@ -175,6 +184,9 @@ class PyramidNet(chainer.Chain):
             channel += channel_diff
             links.append(('py{}'.format(len(links)), PyramidBlock(
                 int(round(in_channel)), int(round(channel)), stride=2)))
+            if pooling is not None:
+                links.append(('_pooling{}'.format(len(links)), lambda x: F.max_pooling_2d(
+                    x, ksize=(2, 2), stride=2, pad=0)))
             for i in six.moves.range(depth - 1):
                 if skip:
                     skip_ratio = float(i + depth * 2 - 1) / skip_size * 0.5
@@ -188,8 +200,7 @@ class PyramidNet(chainer.Chain):
                           L.BatchNormalization(int(round(channel)))))
             links.append(('_relu{}'.format(len(links)), F.relu))
             # attempt to global average pooling
-            links.append(('_apool{}'.format(len(links)), lambda x: F.average_pooling_2d(
-                x, ksize=x.shape[2], stride=1, pad=0)))
+            links.append(('_apool{}'.format(len(links)), _global_average_pooling_2d))
             links.append(('fc{}'.format(len(links)),
                           L.Linear(in_size=None, out_size=num_class)))
 
