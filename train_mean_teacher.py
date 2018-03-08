@@ -148,7 +148,7 @@ def main():
     eval_trigger = (1, 'epoch')
     classifier = chainer.links.Classifier(model.teacher)
     split_evaluator = extensions.Evaluator(split_iter, classifier, device=args.gpu)
-    split_evaluator.name = 'split_validation'
+    split_evaluator.name = 'observable_validation'
     trainer.extend(split_evaluator, trigger=eval_trigger)
 
     truth_evaluator = extensions.Evaluator(test_iter, classifier, device=args.gpu)
