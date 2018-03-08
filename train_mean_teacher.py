@@ -83,7 +83,16 @@ def main():
     if args.dataset == 'cifar10':
         print('Using CIFAR10 dataset.')
         class_labels = 10
-        train, test = get_cifar10()
+        # trainのうち10000枚を検証用にとっておく
+        # testの10000枚はラベルなしのデータとして扱う
+        train, unlabeled = get_cifar10()
+        test = train[10000:]
+        train = train[:-10000]
+        # label = -1のデータとして扱う
+        unlabeled = [(x[0], -1) for x in unlabeled]
+        print(f'train:{len(train)}, unlabeled:{len(unlabeled)}, test:{len(test)}')
+        train = chainer.datasets.ConcatenatedDataset(train, unlabeled)
+
     elif args.dataset == 'cifar100':
         print('Using CIFAR100 dataset.')
         class_labels = 100
@@ -114,7 +123,7 @@ def main():
     train = chainer.datasets.transform_dataset.TransformDataset(
             train, transformer.LessonTransform(crop_size=(32, 32)))
 
-    train_iter = chainer.iterators.SerialIterator(train, args.batchsize, shuffle=False)
+    train_iter = chainer.iterators.SerialIterator(train, args.batchsize, shuffle=True)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
                                                  repeat=False, shuffle=False)
     # Set up a trainer
