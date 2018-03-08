@@ -184,6 +184,7 @@ def main():
     # either the updater or the evaluator.
     trainer.extend(extensions.PrintReport(
         ['epoch', 'lr', 'main/class_loss', 'main/consistency_loss', 'main/loss',
+         'teacher_accuracy', 'student_accuracy',
          'observable_validation/main/loss', 'observable_validation/main/accuracy',
           'truth_validation/main/accuracy', 'truth_validation/main/loss', 'elapsed_time']))
 

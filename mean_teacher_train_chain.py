@@ -36,8 +36,8 @@ class MeanTeacherTrainChain(chainer.Chain):
             'class_loss': class_loss,
             'consistency_loss': consistency_loss,
             'loss': total_loss,
-            'teacher accuracy': acc_t,
-            'student accuracy': acc_s
+            'teacher_accuracy': acc_t,
+            'student_accuracy': acc_s
          }, self)
 
         return total_loss
