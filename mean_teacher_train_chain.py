@@ -4,7 +4,7 @@ from chainer import reporter
 import copy
 import transformer
 
-class MeanTeacherTrainChain(chainer.Link):
+class MeanTeacherTrainChain(chainer.Chain):
     def __init__(self, model):
         super().__init__()
         with self.init_scope():

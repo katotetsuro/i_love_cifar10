@@ -104,7 +104,7 @@ def main():
         raise RuntimeError('Invalid dataset choice.')
 
     if args.model == 'resnet50':
-        predictor = ResNet('auto')
+        predictor = ResNet(None)
         predictor.fc6 = L.Linear(2048, class_labels)
     elif args.model == 'pyramid':
         predictor = shaked_pyramid_net.PyramidNet(skip=True)
