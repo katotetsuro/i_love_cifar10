@@ -110,6 +110,9 @@ def main():
         print('Using CIFAR10 dataset.')
         class_labels = 10
         train, test = get_cifar10()
+        # for mean-teacher experiment
+        #train = train[:-10000]
+        #print(len(train))
     elif args.dataset == 'cifar100':
         print('Using CIFAR100 dataset.')
         class_labels = 100
