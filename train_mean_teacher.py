@@ -67,6 +67,7 @@ def main():
                         help='data augmentation strategy')
     parser.add_argument('--model', '-m', default='pyramid', choices=['resnet50', 'pyramid'],
                         help='data augmentation strategy')
+    parser.add_argument('--weights', '-w', default='', help='initial weight')
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -83,13 +84,15 @@ def main():
     if args.dataset == 'cifar10':
         print('Using CIFAR10 dataset.')
         class_labels = 10
-        # trainのうち10000枚を検証用にとっておく
-        # testの10000枚はラベルなしのデータとして扱う
-        train, unlabeled = get_cifar10()
-        test = train[10000:]
+        # trainのうち10000枚を検証用にとっておく. splitと呼ぶ
+        # testの10000枚はラベルを-1に変換して、ラベルなしのデータとして扱う. unlabeledと呼ぶ
+        # 1. testに対して、精度があがるのか?
+        # 2. splitで、精度の向上と連動した様子が観察できるのか？
+        train, test = get_cifar10()
+        split = train[-10000:]
         train = train[:-10000]
         # label = -1のデータとして扱う
-        unlabeled = [(x[0], -1) for x in unlabeled]
+        unlabeled = [(x[0], -1) for x in test]
         print(f'train:{len(train)}, unlabeled:{len(unlabeled)}, test:{len(test)}')
         train = chainer.datasets.ConcatenatedDataset(train, unlabeled)
 
@@ -105,6 +108,10 @@ def main():
         predictor.fc6 = L.Linear(2048, class_labels)
     elif args.model == 'pyramid':
         predictor = shaked_pyramid_net.PyramidNet(skip=True)
+
+    if not args.weights == '':
+        print(f'loading weights from {args.weights}')
+        chainer.serializers.load_npz(args.weights, predictor)
 
     model = mean_teacher_train_chain.MeanTeacherTrainChain(model=predictor)
 
@@ -124,6 +131,8 @@ def main():
             train, transformer.LessonTransform(crop_size=(32, 32)))
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize, shuffle=True)
+    split_iter = chainer.iterators.SerialIterator(split, args.batchsize,
+                                                 repeat=False, shuffle=False)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
                                                  repeat=False, shuffle=False)
     # Set up a trainer
@@ -137,8 +146,14 @@ def main():
 
     # Evaluate the model with the test dataset for each epoch
     eval_trigger = (1, 'epoch')
-    trainer.extend(extensions.Evaluator(test_iter, model,
-                                        device=args.gpu), trigger=eval_trigger)
+    classifier = chainer.links.Classifier(model.teacher)
+    split_evaluator = extensions.Evaluator(split_iter, classifier, device=args.gpu)
+    split_evaluator.name = 'split_validation'
+    trainer.extend(split_evaluator, trigger=eval_trigger)
+
+    truth_evaluator = extensions.Evaluator(test_iter, classifier, device=args.gpu)
+    truth_evaluator.name = 'truth_validation'
+    trainer.extend(truth_evaluator, trigger=eval_trigger)
 
     # Reduce the learning rate by half every 25 epochs.
     lr_drop_epoch = [int(args.epoch*0.5), int(args.epoch*0.75)]
@@ -168,7 +183,7 @@ def main():
     # Entries other than 'epoch' are reported by the Classifier link, called by
     # either the updater or the evaluator.
     trainer.extend(extensions.PrintReport(
-        ['epoch', 'lr', 'main/class_loss', 'main/consistency_loss', 'main/loss', 'validation/main/loss', 'validation/main/accuracy', 'elapsed_time']))
+        ['epoch', 'lr', 'main/class_loss', 'main/consistency_loss', 'main/loss', 'observable_validation/main/loss', 'truth_validation/main/accuracy', 'elapsed_time']))
 
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())

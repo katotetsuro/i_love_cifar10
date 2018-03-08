@@ -18,6 +18,7 @@ class MeanTeacherTrainChain(chainer.Link):
         with chainer.using_config('train', False):
             yt = self.teacher(xt)
             yt = F.softmax(yt).array
+            acc_t = F.accuracy(yt, t)
 
         # 上のwith抜けたらちゃんとstateがpopされることを期待している
         assert chainer.config.train == True
@@ -29,11 +30,14 @@ class MeanTeacherTrainChain(chainer.Link):
         ys = F.softmax(ys)
         consistency_loss = F.mean_squared_error(yt, ys)
         total_loss = class_loss + consistency_loss
+        acc_s = F.accuracy(ys, t)
 
         reporter.report({
             'class_loss': class_loss,
             'consistency_loss': consistency_loss,
-            'loss': total_loss
+            'loss': total_loss,
+            'teacher accuracy': acc_t,
+            'student accuracy': acc_s
          }, self)
 
         return total_loss
