@@ -183,7 +183,9 @@ def main():
     # Entries other than 'epoch' are reported by the Classifier link, called by
     # either the updater or the evaluator.
     trainer.extend(extensions.PrintReport(
-        ['epoch', 'lr', 'main/class_loss', 'main/consistency_loss', 'main/loss', 'observable_validation/main/loss', 'truth_validation/main/accuracy', 'elapsed_time']))
+        ['epoch', 'lr', 'main/class_loss', 'main/consistency_loss', 'main/loss',
+         'observable_validation/main/loss', 'observable_validation/main/accuracy',
+          'truth_validation/main/accuracy', 'truth_validation/main/loss', 'elapsed_time']))
 
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())
