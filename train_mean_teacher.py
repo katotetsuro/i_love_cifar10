@@ -106,8 +106,10 @@ def main():
     if args.model == 'resnet50':
         predictor = ResNet(None)
         predictor.fc6 = L.Linear(2048, class_labels)
+        predictor.fc6.name = 'fc6'
         predictor2 = ResNet(None)
         predictor2.fc6 = L.Linear(2048, class_labels)
+        predictor2.fc6.name = 'fc6'
     elif args.model == 'pyramid':
         predictor = shaked_pyramid_net.PyramidNet(skip=True)
 
