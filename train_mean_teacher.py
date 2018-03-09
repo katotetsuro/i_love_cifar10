@@ -106,19 +106,23 @@ def main():
     if args.model == 'resnet50':
         predictor = ResNet(None)
         predictor.fc6 = L.Linear(2048, class_labels)
+        predictor2 = ResNet(None)
+        predictor2.fc6 = L.Linear(2048, class_labels)
     elif args.model == 'pyramid':
         predictor = shaked_pyramid_net.PyramidNet(skip=True)
 
     if not args.weights == '':
         print(f'loading weights from {args.weights}')
         chainer.serializers.load_npz(args.weights, predictor)
+        chainer.serializers.load_npz(args.weights, predictor2)
 
-    model = mean_teacher_train_chain.MeanTeacherTrainChain(model=predictor)
+    model = mean_teacher_train_chain.MeanTeacherTrainChain(predictor, predictor2)
 
     if args.gpu >= 0:
         # Make a specified GPU current
         chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()  # Copy the model to the GPU
+        model.teacher.to_gpu()
 
     optimizer = chainer.optimizers.MomentumSGD(args.learnrate)
     optimizer.setup(model)
@@ -172,7 +176,16 @@ def main():
     trainer.extend(extensions.dump_graph('main/loss'))
 
     # Take a snapshot at each epoch
-    trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
+    #trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
+    trainer.extend(
+        extensions.snapshot_object(model,
+                                   'observable_best_accuracy.npz'),
+        trigger=chainer.training.triggers.MaxValueTrigger('observable_validation/main/accuracy'))
+
+    trainer.extend(
+        extensions.snapshot_object(model,
+                                   'truth_best_accuracy.npz'),
+        trigger=chainer.training.triggers.MaxValueTrigger('truth_validation/main/accuracy'))
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())

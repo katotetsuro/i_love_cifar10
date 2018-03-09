@@ -5,14 +5,11 @@ import copy
 import transformer
 
 class MeanTeacherTrainChain(chainer.Chain):
-    def __init__(self, model):
+    def __init__(self, teacher, student):
         super().__init__()
+        self.teacher = teacher
         with self.init_scope():
-            self.teacher = model
-            self.teacher.disable_update()
-
-            self.student = model.copy()
-            self.student.copyparams(model)
+            self.student = student
 
     def __call__(self, xt, xs, t):
 
@@ -56,9 +53,3 @@ class MeanTeacherTrainChain(chainer.Chain):
         alpha = min(1 - 1 / (trainer.updater.iteration + 1), 0.97)
         #with chainer.no_backprop_mode():
         self.recursive_copy(self.teacher, self.student, alpha)
-
-        # https://github.com/chainer/chainer/blob/v3.4.0/chainer/link.py#L450
-        # t = self.teacher.__dict__
-        # s = self.student.__dict__
-        # for name in self.teacher._params:
-        #     t[name] = t[name] * alpha + s[name] * (1-alpha)
