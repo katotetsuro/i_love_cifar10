@@ -125,7 +125,7 @@ class LessonTransform():
     def __call__(self, in_data):
         x, t = in_data
 
-        xt = self._add_noise(x.copy(), 1.1, 5, (-2, 2), (0.002, 0.04), 1.0)
-        xs = self._add_noise(x, 2, 15, (-4, 5), (0.02, 0.4), 3.0)
+        xt = x #self._add_noise(x.copy(), 1.1, 5, (-2, 2), (0.002, 0.04), 1.0)
+        xs = self._add_noise(x.copy(), 2, 15, (-4, 5), (0.02, 0.4), 3.0)
 
         return xt, xs, t

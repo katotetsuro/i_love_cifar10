@@ -9,13 +9,15 @@ class MeanTeacherTrainChain(chainer.Chain):
         super().__init__()
         with self.init_scope():
             self.teacher = model
+            self.teacher.disable_update()
+
             self.student = model.copy()
             self.student.copyparams(model)
 
     def __call__(self, xt, xs, t):
 
         # teacherのpredictionをラベル的に扱う
-        with chainer.using_config('train', False):
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
             yt = self.teacher(xt)
             yt = F.softmax(yt).array
             acc_t = F.accuracy(yt, t)
@@ -26,9 +28,8 @@ class MeanTeacherTrainChain(chainer.Chain):
         ys = self.student(xs)
 
         class_loss = F.softmax_cross_entropy(ys, t)
-        yt = F.softmax(yt).array
         ys = F.softmax(ys)
-        consistency_loss = F.mean_squared_error(yt, ys)
+        consistency_loss = F.mean_squared_error(yt, ys) * 100
         total_loss = class_loss + consistency_loss
         acc_s = F.accuracy(ys, t)
 
@@ -38,15 +39,26 @@ class MeanTeacherTrainChain(chainer.Chain):
             'loss': total_loss,
             'teacher_accuracy': acc_t,
             'student_accuracy': acc_s
-         }, self)
+        }, self)
 
         return total_loss
+
+    def recursive_copy(self, t, s, alpha):
+        if isinstance(t, chainer.Chain):
+            for c in t._children:
+                self.recursive_copy(t[c], s[c], alpha)
+        elif isinstance(t, chainer.Link):
+            for name in t._params:
+                t.__dict__[name].array = t.__dict__[name].array * alpha + s.__dict__[name].array * (1-alpha)
 
     # trainerの毎ループ呼ばれるExtensionとして使う
     def on_update_finished(self, trainer):
         alpha = min(1 - 1 / (trainer.updater.iteration + 1), 0.97)
+        #with chainer.no_backprop_mode():
+        self.recursive_copy(self.teacher, self.student, alpha)
+
         # https://github.com/chainer/chainer/blob/v3.4.0/chainer/link.py#L450
-        t = self.teacher.__dict__
-        s = self.student.__dict__
-        for name in self.teacher._params:
-            t[name] = t[name] * alpha + s[name] * (1-alpha)
+        # t = self.teacher.__dict__
+        # s = self.student.__dict__
+        # for name in self.teacher._params:
+        #     t[name] = t[name] * alpha + s[name] * (1-alpha)

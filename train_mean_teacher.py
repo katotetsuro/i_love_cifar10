@@ -184,7 +184,7 @@ def main():
     # either the updater or the evaluator.
     trainer.extend(extensions.PrintReport(
         ['epoch', 'lr', 'main/class_loss', 'main/consistency_loss', 'main/loss',
-         'teacher_accuracy', 'student_accuracy',
+         'main/teacher_accuracy', 'main/student_accuracy',
          'observable_validation/main/loss', 'observable_validation/main/accuracy',
           'truth_validation/main/accuracy', 'truth_validation/main/loss', 'elapsed_time']))
 
@@ -198,6 +198,8 @@ def main():
     if args.resume:
         # Resume from a snapshot
         chainer.serializers.load_npz(args.resume, trainer)
+
+#    trainer.extend(extensions.dump_graph('main/loss'))
 
     # Run the training
     trainer.run()
