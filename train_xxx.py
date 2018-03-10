@@ -22,38 +22,12 @@ import transformer
 import dataset
 import shaked_pyramid_net
 import xxx_loader
-
-
-def soft_label_classification_loss(x, t):
-    xp = chainer.cuda.get_array_module(t)
-    if t.shape == (len(x), 3):
-        y1, y2, w = np.split(t, (1, 2), axis=1)
-        w = w.reshape((-1,))
-        y1 = y1.astype(xp.int32).reshape((-1, ))
-        y2 = y2.astype(xp.int32).reshape((-1, ))
-        loss = F.matmul(w, F.softmax_cross_entropy(x, y1, reduce='no')) + \
-            F.matmul((1-w), F.softmax_cross_entropy(x, y2, reduce='no'))
-        loss /= len(x)
-        return loss
-    else:
-        return F.softmax_cross_entropy(x, t)
-
-# 2つの画像がまざったサンプルに対する精度ってよくわかんないし、
-# まーval accが上がればいいしなってことで適当に作った
-
-
-def soft_label_classification_acc(x, t):
-    xp = chainer.cuda.get_array_module(t)
-    if t.shape == (len(x), 3):
-        dominant = xp.max(t[:, :2], axis=1).astype(xp.int32)
-        return F.accuracy(x, dominant)
-    else:
-        return F.accuracy(x, t)
+import augmentor_transformer
 
 
 class ResNet(chainer.links.ResNet50Layers):
     def __call__(self, x):
-        return super().__call__(x)['prob']
+        return super().__call__(x, layers=['fc6'])['fc6']
 
 
 def set_random_seed(seed):
@@ -90,11 +64,12 @@ def main():
                         help='Directory to output the result')
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
-    parser.add_argument('--aug_method', '-a', default='both', choices=['none', 'mixup', 'random_erasing', 'both'],
+    parser.add_argument('--aug_method', '-a', default='random_erasing', choices=['none', 'mixup', 'random_erasing', 'both'],
                         help='data augmentation strategy')
     parser.add_argument('--model', '-m', default='pyramid', choices=['resnet50', 'pyramid'],
                         help='data augmentation strategy')
-    parser.add_argument('--weight', '-w', default='', help='load pretrained model')
+    parser.add_argument('--weight', '-w', default='',
+                        help='load pretrained model')
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -104,40 +79,20 @@ def main():
     print('')
 
     # https://twitter.com/mitmul/status/960155585768439808
-    chainer.cuda.set_max_workspace_size(512 * 1024 * 1024);
+    chainer.cuda.set_max_workspace_size(512 * 1024 * 1024)
     chainer.global_config.autotune = True
 
     set_random_seed(args.seed)
 
-    # Set up a neural network to train.
-    # Classifier reports softmax cross entropy loss and accuracy at every
-    # iteration, which will be used by the PrintReport extension below.
-    # if args.dataset == 'cifar10':
-    #     print('Using CIFAR10 dataset.')
-    #     class_labels = 10
-    #     train, test = get_cifar10()
-    # elif args.dataset == 'cifar100':
-    #     print('Using CIFAR100 dataset.')
-    #     class_labels = 100
-    #     train, test = get_cifar100()
-    # else:
-    #     raise RuntimeError('Invalid dataset choice.')
-
+    class_labels = 55
     if args.model == 'resnet50':
         predictor = ResNet(None)
         predictor.fc6 = L.Linear(2048, class_labels)
     elif args.model == 'pyramid':
-        predictor = shaked_pyramid_net.PyramidNet(skip=True, num_class=55, depth=18, alpha=90)
+        predictor = shaked_pyramid_net.PyramidNet(
+            skip=True, num_class=class_labels, depth=18, alpha=90)
 
-    # 下の方にあるtrain dataのtransformの条件分岐とかぶってるけどなー
-    if args.aug_method in ('both', 'mixup'):
-        lossfun = soft_label_classification_loss
-        accfun = soft_label_classification_acc
-    else:
-        lossfun = F.softmax_cross_entropy
-        accfun = F.accuracy
-
-    model = L.Classifier(predictor, lossfun=lossfun, accfun=accfun)
+    model = L.Classifier(predictor)
 
     if not args.weight == '':
         chainer.serializers.load_npz(args.weight, model)
@@ -152,24 +107,17 @@ def main():
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
     # augment train data
-    if args.aug_method == 'none':
-        print('data augmentationなしです')
-#        train = dataset.SingleCifar10((train, None))
-        train = xxx_loader.FixedSizeDataset('../train.txt', root='../', train=False)
-    elif args.aug_method in ('both', 'mixup'):
-        use_random_erasing = args.aug_method == 'both'
-        #train = dataset.PairwiseCifar10((train, None))
-        train = xxx_loader.FixedSizeDataset('../', 'train.txt', expand_ratio=3)
-        train = chainer.datasets.transform_dataset.TransformDataset(
-            train, transformer.MixupTransform(use_random_erasing=use_random_erasing))
-    elif args.aug_method == 'random_erasing':
-#        train = dataset.SingleCifar10((train, None))
-        train = xxx_loader.FixedSizeDataset('../train.txt', root='../', expand_ratio=3)
-        train = chainer.datasets.transform_dataset.TransformDataset(
-            train, transformer.RandomErasingTransform())
+    train = chainer.datasets.LabeledImageDataset(
+        '../train.txt', root='../', dtype=np.uint8)
+    train = chainer.datasets.transform_dataset.TransformDataset(
+        train, augmentor_transformer.AugmentorTransform())
 
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
-    test = xxx_loader.FixedSizeDataset('../test.txt', root='../', train=False)
+
+    test = chainer.datasets.LabeledImageDataset(
+        '../test.txt', root='../', dtype=np.uint8)
+    test = chainer.datasets.transform_dataset.TransformDataset(
+        train, augmentor_transformer.AugmentorTransform(train=False))
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
                                                  repeat=False, shuffle=False)
     # Set up a trainer
@@ -182,7 +130,7 @@ def main():
                                         device=args.gpu), trigger=eval_trigger)
 
     # Reduce the learning rate by half every 25 epochs.
-    lr_drop_epoch = [int(args.epoch*0.5), int(args.epoch*0.75)]
+    lr_drop_epoch = [int(args.epoch * 0.5), int(args.epoch * 0.75)]
     lr_drop_ratio = 0.1
     print(f'lr schedule: {lr_drop_ratio}, timing: {lr_drop_epoch}')
 

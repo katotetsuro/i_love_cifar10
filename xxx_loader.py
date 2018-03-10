@@ -66,17 +66,3 @@ class FixedSizeDataset(chainer.datasets.LabeledImageDataset):
 
         x /= 255.0
         return x, y
-
-
-class Resizing():
-    """
-    ターゲットサイズにリサイズするんだけど、アスペクト比を固定すべきかどうか悩むなー
-    """
-
-    def __call__(self, in_data):
-        x, y = in_data
-        x = x.transpose(1, 2, 0)
-        w, h, _ = x.shape
-
-        x = cv2.resize(x.transpose(1, 2, 0), (128, 128))
-        return x, y
