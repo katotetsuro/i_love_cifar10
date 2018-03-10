@@ -4,7 +4,5 @@ __pycache__
 *.swp
 .DS_Store
 result
-xxx_loader.py
-train_xxx.py
 *.npz
 snapshot_iter*
