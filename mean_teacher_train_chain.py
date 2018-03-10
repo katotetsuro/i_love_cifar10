@@ -4,12 +4,14 @@ from chainer import reporter
 import copy
 import transformer
 
+
 class MeanTeacherTrainChain(chainer.Chain):
-    def __init__(self, teacher, student):
+    def __init__(self, teacher, student, consistent_weight):
         super().__init__()
         self.teacher = teacher
         with self.init_scope():
             self.student = student
+        self.consistent_weight = consistent_weight
 
     def __call__(self, xt, xs, t):
 
@@ -26,7 +28,7 @@ class MeanTeacherTrainChain(chainer.Chain):
 
         class_loss = F.softmax_cross_entropy(ys, t)
         ys = F.softmax(ys)
-        consistency_loss = F.mean_squared_error(yt, ys) * 100
+        consistency_loss = F.mean_squared_error(yt, ys) * consistent_weight
         total_loss = class_loss + consistency_loss
         acc_s = F.accuracy(ys, t)
 
@@ -46,10 +48,11 @@ class MeanTeacherTrainChain(chainer.Chain):
                 self.recursive_copy(t[c], s[c], alpha)
         elif isinstance(t, chainer.Link):
             for name in t._params:
-                t.__dict__[name].array = t.__dict__[name].array * alpha + s.__dict__[name].array * (1-alpha)
+                t.__dict__[name].array = t.__dict__[name].array * \
+                    alpha + s.__dict__[name].array * (1 - alpha)
 
     # trainerの毎ループ呼ばれるExtensionとして使う
     def on_update_finished(self, trainer):
         alpha = min(1 - 1 / (trainer.updater.iteration + 1), 0.97)
-        #with chainer.no_backprop_mode():
+        # with chainer.no_backprop_mode():
         self.recursive_copy(self.teacher, self.student, alpha)

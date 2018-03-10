@@ -24,6 +24,7 @@ import dataset
 import shaked_pyramid_net
 import mean_teacher_train_chain
 
+
 class ResNet(chainer.links.ResNet50Layers):
     def __call__(self, x):
         return super().__call__(x, layers=['fc6'])['fc6']
@@ -68,6 +69,7 @@ def main():
     parser.add_argument('--model', '-m', default='pyramid', choices=['resnet50', 'pyramid'],
                         help='data augmentation strategy')
     parser.add_argument('--weights', '-w', default='', help='initial weight')
+    parser.add_argument('--consistent_weight', default=10)
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -93,7 +95,8 @@ def main():
         train = train[:-10000]
         # label = -1のデータとして扱う
         unlabeled = [(x[0], -1) for x in test]
-        print(f'train:{len(train)}, unlabeled:{len(unlabeled)}, test:{len(test)}')
+        print(
+            f'train:{len(train)}, unlabeled:{len(unlabeled)}, test:{len(test)}')
         train = chainer.datasets.ConcatenatedDataset(train, unlabeled)
 
     elif args.dataset == 'cifar100':
@@ -118,7 +121,8 @@ def main():
         chainer.serializers.load_npz(args.weights, predictor)
         chainer.serializers.load_npz(args.weights, predictor2)
 
-    model = mean_teacher_train_chain.MeanTeacherTrainChain(predictor, predictor2)
+    model = mean_teacher_train_chain.MeanTeacherTrainChain(
+        predictor, predictor2, args.consistent_weight)
 
     if args.gpu >= 0:
         # Make a specified GPU current
@@ -134,11 +138,12 @@ def main():
     print('currently, aug_method is ignored')
     train = dataset.SingleCifar10((train, None))
     train = chainer.datasets.transform_dataset.TransformDataset(
-            train, transformer.LessonTransform(crop_size=(32, 32)))
+        train, transformer.LessonTransform(crop_size=(32, 32)))
 
-    train_iter = chainer.iterators.SerialIterator(train, args.batchsize, shuffle=True)
+    train_iter = chainer.iterators.SerialIterator(
+        train, args.batchsize, shuffle=True)
     split_iter = chainer.iterators.SerialIterator(split, args.batchsize,
-                                                 repeat=False, shuffle=False)
+                                                  repeat=False, shuffle=False)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
                                                  repeat=False, shuffle=False)
     # Set up a trainer
@@ -153,16 +158,18 @@ def main():
     # Evaluate the model with the test dataset for each epoch
     eval_trigger = (1, 'epoch')
     classifier = chainer.links.Classifier(model.teacher)
-    split_evaluator = extensions.Evaluator(split_iter, classifier, device=args.gpu)
+    split_evaluator = extensions.Evaluator(
+        split_iter, classifier, device=args.gpu)
     split_evaluator.name = 'observable_validation'
     trainer.extend(split_evaluator, trigger=eval_trigger)
 
-    truth_evaluator = extensions.Evaluator(test_iter, classifier, device=args.gpu)
+    truth_evaluator = extensions.Evaluator(
+        test_iter, classifier, device=args.gpu)
     truth_evaluator.name = 'truth_validation'
     trainer.extend(truth_evaluator, trigger=eval_trigger)
 
     # Reduce the learning rate by half every 25 epochs.
-    lr_drop_epoch = [int(args.epoch*0.5), int(args.epoch*0.75)]
+    lr_drop_epoch = [int(args.epoch * 0.5), int(args.epoch * 0.75)]
     lr_drop_ratio = 0.1
     print(f'lr schedule: {lr_drop_ratio}, timing: {lr_drop_epoch}')
 
@@ -201,7 +208,7 @@ def main():
         ['epoch', 'lr', 'main/class_loss', 'main/consistency_loss', 'main/loss',
          'main/teacher_accuracy', 'main/student_accuracy',
          'observable_validation/main/loss', 'observable_validation/main/accuracy',
-          'truth_validation/main/accuracy', 'truth_validation/main/loss', 'elapsed_time']))
+         'truth_validation/main/accuracy', 'truth_validation/main/loss', 'elapsed_time']))
 
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())
