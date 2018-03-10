@@ -117,7 +117,7 @@ def main():
     test = chainer.datasets.LabeledImageDataset(
         '../test.txt', root='../', dtype=np.uint8)
     test = chainer.datasets.transform_dataset.TransformDataset(
-        train, augmentor_transformer.AugmentorTransform(train=False))
+        test, augmentor_transformer.AugmentorTransform(train=False))
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
                                                  repeat=False, shuffle=False)
     # Set up a trainer
