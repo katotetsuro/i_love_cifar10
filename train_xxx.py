@@ -70,6 +70,12 @@ def main():
                         help='data augmentation strategy')
     parser.add_argument('--weight', '-w', default='',
                         help='load pretrained model')
+    parser.add_argument('--start_channel', default=16,
+                        type=int, help='start channel')
+    parser.add_argument('--depth', default=16, type=int,
+                        help='depth')
+    parser.add_argument('--alpha', default=90, type=int,
+                        help='alpha')
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -90,7 +96,7 @@ def main():
         predictor.fc6 = L.Linear(2048, class_labels)
     elif args.model == 'pyramid':
         predictor = shaked_pyramid_net.PyramidNet(
-            skip=True, num_class=class_labels, depth=18, alpha=90)
+            skip=True, num_class=class_labels, depth=args.depth, alpha=args.alpha, start_channel=args.start_channel)
 
     model = L.Classifier(predictor)
 
