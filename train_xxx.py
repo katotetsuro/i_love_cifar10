@@ -76,6 +76,7 @@ def main():
                         help='depth')
     parser.add_argument('--alpha', default=90, type=int,
                         help='alpha')
+    parser.add_argument('--decay', default=5e-4, type=float)
     args = parser.parse_args()
 
     print('GPU: {}'.format(args.gpu))
@@ -85,8 +86,6 @@ def main():
     print('')
 
     # https://twitter.com/mitmul/status/960155585768439808
-    chainer.cuda.set_max_workspace_size(512 * 1024 * 1024)
-    chainer.global_config.autotune = True
 
     set_random_seed(args.seed)
 
@@ -110,7 +109,7 @@ def main():
 
     optimizer = chainer.optimizers.MomentumSGD(args.learnrate)
     optimizer.setup(model)
-    optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
+    optimizer.add_hook(chainer.optimizer.WeightDecay(args.decay))
 
     # augment train data
     train = chainer.datasets.LabeledImageDataset(

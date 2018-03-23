@@ -200,9 +200,8 @@ class PyramidNet(chainer.Chain):
                           L.BatchNormalization(int(round(channel)))))
             links.append(('_relu{}'.format(len(links)), F.relu))
             # attempt to global average pooling
+            links.append(('conv{}'.format(len(links)), L.Convolution2D(None, num_class, ksize=3, stride=1, pad=0)))
             links.append(('_apool{}'.format(len(links)), _global_average_pooling_2d))
-            links.append(('fc{}'.format(len(links)),
-                          L.Linear(in_size=None, out_size=num_class)))
 
             for name, f in links:
                 if not name.startswith('_'):
