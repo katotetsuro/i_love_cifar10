@@ -43,7 +43,8 @@ def set_random_seed(seed):
 
     # set Chainer(CuPy) random seed
     if chainer.cuda.available:
-        chainer.cuda.cupy.random.seed(seed)
+      pass
+        #chainer.cuda.cupy.random.seed(seed)
 
 
 def main():
@@ -91,7 +92,7 @@ def main():
 
     class_labels = 55
     if args.model == 'resnet50':
-        predictor = ResNet(None)
+        predictor = ResNet('auto')
         predictor.fc6 = L.Linear(2048, class_labels)
     elif args.model == 'pyramid':
         predictor = shaked_pyramid_net.PyramidNet(
@@ -107,7 +108,8 @@ def main():
         chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()  # Copy the model to the GPU
 
-    optimizer = chainer.optimizers.MomentumSGD(args.learnrate)
+    #optimizer = chainer.optimizers.MomentumSGD(args.learnrate)
+    optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(args.decay))
 
@@ -154,7 +156,7 @@ def main():
     trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
     trainer.extend(
         extensions.snapshot_object(model,
-                                   'best_accuracy_{.updater.iteration}.npz'),
+                                   'best_accuracy.npz'),
         trigger=chainer.training.triggers.MaxValueTrigger('validation/main/accuracy'))
 
     # Write a log of evaluation statistics for each epoch

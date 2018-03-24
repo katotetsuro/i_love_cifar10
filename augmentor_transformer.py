@@ -10,13 +10,13 @@ class AugmentorTransform():
         self.p.resize(probability=1, width=size, height=size,
                       resample_filter='BILINEAR')
         if train:
-            self.p.rotate(probability=1, max_left_rotation=10,
+            self.p.rotate(probability=0.5, max_left_rotation=10,
                           max_right_rotation=10)
             self.p.flip_left_right(probability=0.5)
             self.p.flip_top_bottom(probability=0.5)
             self.p.zoom_random(probability=0.5, percentage_area=0.8)
             self.p.random_distortion(
-                probability=1, grid_width=4, grid_height=4, magnitude=5)
+                probability=0.5, grid_width=4, grid_height=4, magnitude=5)
             self.p.random_erasing(probability=0.5, rectangle_area=0.5)
         self.scale = scale
 

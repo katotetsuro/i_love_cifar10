@@ -157,7 +157,7 @@ class PyramidNet(chainer.Chain):
             for i in six.moves.range(depth):
                 if skip:
                     # float(i) / skip_size * 0.5
-                    skip_ratio = float(i) / depth * 0.5
+                    skip_ratio = float(i) / depth * 0.75
                 else:
                     skip_ratio = 0
                 in_channel = channel
