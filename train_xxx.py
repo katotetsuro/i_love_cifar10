@@ -43,8 +43,8 @@ def set_random_seed(seed):
 
     # set Chainer(CuPy) random seed
     if chainer.cuda.available:
-      pass
-        #chainer.cuda.cupy.random.seed(seed)
+        pass
+        # chainer.cuda.cupy.random.seed(seed)
 
 
 def main():
@@ -108,8 +108,8 @@ def main():
         chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()  # Copy the model to the GPU
 
-    #optimizer = chainer.optimizers.MomentumSGD(args.learnrate)
-    optimizer = chainer.optimizers.Adam()
+    optimizer = chainer.optimizers.MomentumSGD(args.learnrate)
+    #optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(args.decay))
 
