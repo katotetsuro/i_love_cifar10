@@ -38,7 +38,7 @@ class ShakeNoiseMultiplier(function.Function):
             weight = xp.random.rand(*w_shape, dtype=x1.dtype)
 
         a, b = self.forward_range
-        weight = weight*(b - a) + a
+        weight = weight * (b - a) + a
         return x1 * weight,
 
     def backward(self, inputs, gy):
@@ -51,7 +51,7 @@ class ShakeNoiseMultiplier(function.Function):
             weight = xp.random.rand(*w_shape, dtype=gy[0].dtype)
 
         a, b = self.backward_range
-        weight = weight*(b - a) + a
+        weight = weight * (b - a) + a
         return gy[0] * weight,
 
 
@@ -138,6 +138,7 @@ class PyramidBlock(chainer.Chain):
         else:
             return h + x
 
+
 def _global_average_pooling_2d(x):
     n, channel, rows, cols = x.data.shape
     h = F.average_pooling_2d(x, (rows, cols), stride=1)
@@ -156,8 +157,7 @@ class PyramidNet(chainer.Chain):
             skip_size = depth * 3 - 3
             for i in six.moves.range(depth):
                 if skip:
-                    # float(i) / skip_size * 0.5
-                    skip_ratio = float(i) / depth * 0.75
+                    skip_ratio = float(i) / skip_size * 0.5
                 else:
                     skip_ratio = 0
                 in_channel = channel
@@ -200,8 +200,10 @@ class PyramidNet(chainer.Chain):
                           L.BatchNormalization(int(round(channel)))))
             links.append(('_relu{}'.format(len(links)), F.relu))
             # attempt to global average pooling
-            links.append(('conv{}'.format(len(links)), L.Convolution2D(None, num_class, ksize=3, stride=1, pad=0)))
-            links.append(('_apool{}'.format(len(links)), _global_average_pooling_2d))
+            links.append(('conv{}'.format(len(links)), L.Convolution2D(
+                None, num_class, ksize=3, stride=1, pad=0)))
+            links.append(('_apool{}'.format(len(links)),
+                          _global_average_pooling_2d))
 
             for name, f in links:
                 if not name.startswith('_'):
